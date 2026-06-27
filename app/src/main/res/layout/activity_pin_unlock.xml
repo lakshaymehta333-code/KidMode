@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="#F5F5F5">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Parent Access"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="#555555"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Enter your PIN to disable Kid Mode"
+        android:textSize="14sp"
+        android:textColor="#888888"
+        android:layout_marginBottom="32dp" />
+
+    <!-- PIN dots display -->
+    <TextView
+        android:id="@+id/tvPinDots"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="32sp"
+        android:letterSpacing="0.4"
+        android:minWidth="140dp"
+        android:gravity="center"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Error label -->
+    <TextView
+        android:id="@+id/tvError"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Incorrect PIN — try again"
+        android:textColor="#D32F2F"
+        android:textSize="13sp"
+        android:layout_marginBottom="24dp"
+        android:visibility="invisible" />
+
+    <!-- 3 × 4 numpad -->
+    <GridLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:columnCount="3"
+        android:rowCount="4"
+        android:layout_marginBottom="16dp">
+
+        <Button android:id="@+id/btn1" style="@style/Widget.KidMode.NumpadButton" android:text="1" />
+        <Button android:id="@+id/btn2" style="@style/Widget.KidMode.NumpadButton" android:text="2" />
+        <Button android:id="@+id/btn3" style="@style/Widget.KidMode.NumpadButton" android:text="3" />
+
+        <Button android:id="@+id/btn4" style="@style/Widget.KidMode.NumpadButton" android:text="4" />
+        <Button android:id="@+id/btn5" style="@style/Widget.KidMode.NumpadButton" android:text="5" />
+        <Button android:id="@+id/btn6" style="@style/Widget.KidMode.NumpadButton" android:text="6" />
+
+        <Button android:id="@+id/btn7" style="@style/Widget.KidMode.NumpadButton" android:text="7" />
+        <Button android:id="@+id/btn8" style="@style/Widget.KidMode.NumpadButton" android:text="8" />
+        <Button android:id="@+id/btn9" style="@style/Widget.KidMode.NumpadButton" android:text="9" />
+
+        <Button android:id="@+id/btnBackspace" style="@style/Widget.KidMode.NumpadButton" android:text="⌫" />
+        <Button android:id="@+id/btn0"         style="@style/Widget.KidMode.NumpadButton" android:text="0" />
+        <Button android:id="@+id/btnConfirm"   style="@style/Widget.KidMode.NumpadButton" android:text="✓" />
+
+    </GridLayout>
+
+    <Button
+        android:id="@+id/btnCancel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Cancel"
+        style="@style/Widget.Material3.Button.TextButton" />
+
+</LinearLayout>
