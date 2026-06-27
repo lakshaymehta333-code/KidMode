@@ -1,89 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Brightness control -->
-    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-    <!-- System-wide grayscale (grant via: adb shell pm grant com.kidmode android.permission.WRITE_SECURE_SETTINGS) -->
-    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
-    <!-- Overlay for relaunching boring screen if minimized -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- Foreground service -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <!-- Vibration feedback on wrong PIN -->
-    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.KidMode">
+        android:theme="@style/Theme.PhoneNap">
 
-        <!-- Setup / PIN configuration screen -->
+        <!-- Setup screen -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
-        <!-- Full-screen boring overlay shown during Kid Mode -->
+        <!-- Transparent activity for BiometricPrompt — must show over lockscreen -->
         <activity
-            android:name=".BoringActivity"
+            android:name=".BiometricUnlockActivity"
             android:exported="false"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true"
             android:excludeFromRecents="true"
-            android:taskAffinity="com.kidmode.boring"
-            android:launchMode="singleTask"
-            android:theme="@style/Theme.KidMode.Boring" />
-
-        <!-- PIN entry to disable Kid Mode -->
-        <activity
-            android:name=".PinUnlockActivity"
-            android:exported="false"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
-            android:theme="@style/Theme.KidMode.PinUnlock" />
+            android:theme="@style/Theme.PhoneNap.Transparent"/>
 
         <!-- Quick Settings tile -->
         <service
-            android:name=".KidModeTileService"
+            android:name=".PhoneNapTileService"
             android:exported="true"
-            android:icon="@drawable/ic_tile"
             android:label="@string/tile_label"
+            android:icon="@drawable/ic_tile"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE" />
+                <action android:name="android.service.quicksettings.action.QS_TILE"/>
             </intent-filter>
         </service>
 
-        <!-- Foreground service that manages Kid Mode session -->
+        <!-- Accessibility Service — provides the overlay window -->
         <service
-            android:name=".KidModeService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Kid Mode screen restriction" />
-        </service>
-
-        <!-- Device admin receiver for lockNow() -->
-        <receiver
-            android:name=".KidModeDeviceAdminReceiver"
+            android:name=".PhoneNapAccessibilityService"
             android:exported="true"
-            android:permission="android.permission.BIND_DEVICE_ADMIN">
-            <meta-data
-                android:name="android.app.device_admin"
-                android:resource="@xml/device_admin" />
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
-                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
             </intent-filter>
-        </receiver>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config"/>
+        </service>
 
     </application>
 </manifest>

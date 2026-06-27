@@ -1,33 +1,13 @@
 <resources>
-
-    <!-- Main app theme (setup screen) -->
-    <style name="Theme.KidMode" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorSecondary">@color/teal_200</item>
+    <style name="Theme.PhoneNap" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
     </style>
-
-    <!-- Boring screen: pitch dark, no title bar, no colour anywhere -->
-    <style name="Theme.KidMode.Boring" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="android:windowBackground">@color/boring_bg</item>
-        <item name="android:statusBarColor">@color/boring_bg</item>
-        <item name="android:navigationBarColor">@color/boring_bg</item>
-        <item name="android:windowLightStatusBar">false</item>
+    <style name="Theme.PhoneNap.Transparent" parent="Theme.PhoneNap">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
     </style>
-
-    <!-- PIN unlock screen: clean white sheet -->
-    <style name="Theme.KidMode.PinUnlock" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">@color/purple_500</item>
-    </style>
-
-    <!-- Numpad digit buttons -->
-    <style name="Widget.KidMode.NumpadButton" parent="Widget.Material3.Button.OutlinedButton">
-        <item name="android:layout_width">80dp</item>
-        <item name="android:layout_height">80dp</item>
-        <item name="android:layout_margin">4dp</item>
-        <item name="android:textSize">22sp</item>
-        <item name="cornerRadius">40dp</item>
-    </style>
-
 </resources>

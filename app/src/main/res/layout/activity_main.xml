@@ -1,227 +1,110 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FAFAFA">
+    android:background="#0D0D0D">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="24dp">
 
-        <!-- Header -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Kid Mode Setup"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp" />
+            android:text="😴 PhoneNap"
+            android:textSize="30sp"
+            android:textColor="#888888"
+            android:fontFamily="sans-serif-light"
+            android:layout_marginBottom="8dp"/>
 
         <TextView
-            android:id="@+id/tvReadyBanner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:textColor="#555555"
-            android:layout_marginBottom="24dp" />
+            android:text="Screen-nap mode for kids. No PIN, no Device Admin. Parent fingerprint unlocks."
+            android:textSize="13sp"
+            android:textColor="#444444"
+            android:lineSpacingExtra="4dp"
+            android:layout_marginBottom="36dp"/>
 
-        <!-- ── Step 1: PIN ──────────────────────────────────────────────── -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- Step 1 — Accessibility -->
+        <TextView
+            android:id="@+id/tvAccessibilityStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardElevation="2dp"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
+            android:text="❌ Accessibility Service: Not enabled"
+            android:textColor="#777777"
+            android:textSize="13sp"
+            android:layout_marginBottom="10dp"/>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="1 · Parent PIN"
-                    android:textSize="17sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="6dp" />
-
-                <TextView
-                    android:id="@+id/tvPinStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="13sp"
-                    android:layout_marginBottom="12dp" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="New PIN (4 – 6 digits)"
-                    android:layout_marginBottom="8dp"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etNewPin"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="numberPassword"
-                        android:maxLength="6" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Confirm PIN"
-                    android:layout_marginBottom="12dp"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etConfirmPin"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="numberPassword"
-                        android:maxLength="6" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <TextView
-                    android:id="@+id/tvError"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="#D32F2F"
-                    android:textSize="13sp"
-                    android:layout_marginBottom="8dp"
-                    android:visibility="gone" />
-
-                <Button
-                    android:id="@+id/btnSavePin"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Save PIN" />
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- ── Step 2: Device Admin ─────────────────────────────────────── -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardElevation="2dp"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="2 · Screen Lock Permission"
-                    android:textSize="17sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="6dp" />
-
-                <TextView
-                    android:id="@+id/tvAdminStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="13sp"
-                    android:layout_marginBottom="12dp" />
-
-                <Button
-                    android:id="@+id/btnEnableAdmin"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Grant Device Admin" />
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- ── Step 3: Overlay (optional but recommended) ──────────────── -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardElevation="2dp"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="3 · Overlay Permission (recommended)"
-                    android:textSize="17sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="6dp" />
-
-                <TextView
-                    android:id="@+id/tvOverlayStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="13sp"
-                    android:layout_marginBottom="12dp" />
-
-                <Button
-                    android:id="@+id/btnOverlayPermission"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Grant Overlay Permission"
-                    style="@style/Widget.Material3.Button.OutlinedButton" />
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- ── Grayscale ADB hint ───────────────────────────────────────── -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardElevation="2dp"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="System-wide Grayscale (optional)"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="6dp" />
-
-                <TextView
-                    android:id="@+id/tvGrayscaleHint"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="monospace"
-                    android:textSize="11sp"
-                    android:textColor="#555555" />
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Test button -->
         <Button
-            android:id="@+id/btnTestKidMode"
+            android:id="@+id/btnEnableAccessibility"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="▶  Test Kid Mode Now"
-            android:layout_marginBottom="40dp" />
+            android:text="Step 1 — Enable Accessibility Service"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="In Accessibility settings, find PhoneNap Overlay and turn it ON."
+            android:textColor="#3A3A3A"
+            android:textSize="12sp"
+            android:layout_marginBottom="32dp"/>
+
+        <!-- Step 2 — Biometric -->
+        <TextView
+            android:id="@+id/tvBiometricStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="✅ Biometric: Ready"
+            android:textColor="#777777"
+            android:textSize="13sp"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Step 2 — If not enrolled: Settings → Security → Fingerprint."
+            android:textColor="#3A3A3A"
+            android:textSize="12sp"
+            android:layout_marginBottom="32dp"/>
+
+        <!-- Step 3 — Add tile -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Step 3 — Add PhoneNap to Quick Settings"
+            android:textColor="#777777"
+            android:textSize="13sp"
+            android:layout_marginBottom="6dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pull down twice → tap the pencil icon → drag 😴 PhoneNap into the tile row."
+            android:textColor="#3A3A3A"
+            android:textSize="12sp"
+            android:lineSpacingExtra="4dp"
+            android:layout_marginBottom="40dp"/>
+
+        <!-- How to use -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="How to use"
+            android:textColor="#555555"
+            android:textSize="14sp"
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="• Tap 😴 PhoneNap in Quick Settings to activate\n• Screen goes grayscale and dims over 45 seconds\n• Phone locks itself to sleep\n• Kid presses power → overlay fires instantly\n• Tap the fingerprint icon → parent unlocks with biometric\n• Tile tap (when ON) also triggers parent biometric"
+            android:textColor="#3A3A3A"
+            android:textSize="12sp"
+            android:lineSpacingExtra="5dp"/>
 
     </LinearLayout>
 </ScrollView>

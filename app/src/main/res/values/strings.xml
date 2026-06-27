@@ -1,4 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Kid Mode</string>
-    <string name="tile_label">Kid Mode</string>
+    <string name="app_name">PhoneNap</string>
+    <string name="tile_label">PhoneNap</string>
+    <string name="accessibility_service_label">PhoneNap Overlay</string>
+    <string name="accessibility_description">PhoneNap shows a grayscale overlay that covers the screen when activated, stopping kids from using the phone. Parent fingerprint turns it off.</string>
 </resources>
