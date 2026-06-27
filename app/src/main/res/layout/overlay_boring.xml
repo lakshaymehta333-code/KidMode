@@ -92,7 +92,7 @@
                 android:layout_height="3dp"
                 android:background="#2E2E2E"
                 android:scaleX="0"
-                android:transformPivotX="0"/>
+                android:transformPivotX="0dp"/>
         </FrameLayout>
     </LinearLayout>
 
