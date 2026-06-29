@@ -318,8 +318,9 @@ class FaceManager(private val context: Context) {
         if (faceSize < circleD * 0.75f) return EnrollmentCheck.TooSmall
         if (faceSize > circleD * 0.90f) return EnrollmentCheck.TooLarge
 
-        // Lighting check on raw face crop
-        val rawCrop = cropFace(upright, face)
+        // Lighting check on the face region (alignAndCrop gracefully skips rotation
+        // if landmarks are missing, so it doubles as a plain crop here)
+        val rawCrop = alignAndCrop(upright, face)
         if (rawCrop != null && !hasAdequateLighting(rawCrop)) return EnrollmentCheck.LowLight
 
         // Eye landmarks required for alignment
