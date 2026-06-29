@@ -53,6 +53,16 @@
         android:layout_marginBottom="12dp"/>
 
     <Button
+        android:id="@+id/btnTestScan"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Test Scan Now"
+        android:textColor="#AAAAAA"
+        android:backgroundTint="@android:color/transparent"
+        android:textSize="12sp"
+        android:layout_marginBottom="4dp"/>
+
+    <Button
         android:id="@+id/btnReset"
         android:layout_width="match_parent"
         android:layout_height="48dp"

@@ -41,7 +41,7 @@ class FaceManager(private val context: Context) {
 
         val face = faces.maxByOrNull { it.boundingBox.width() } ?: return FaceResult.NO_FACE
 
-        if (abs(face.headEulerAngleY) > 30f || abs(face.headEulerAngleX) > 25f)
+        if (abs(face.headEulerAngleY) > 45f || abs(face.headEulerAngleX) > 35f)
             return FaceResult.NO_FACE
 
         val vec    = extractVector(face) ?: return FaceResult.NO_FACE
@@ -94,6 +94,6 @@ class FaceManager(private val context: Context) {
     }
 
     companion object {
-        private const val THRESHOLD = 0.78f
+        private const val THRESHOLD = 0.70f
     }
 }

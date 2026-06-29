@@ -24,6 +24,12 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SetupActivity::class.java))
         }
 
+        binding.btnTestScan.setOnClickListener {
+            val svc = PhoneNapService.instance
+            if (svc != null) svc.triggerActiveScan()
+            else android.widget.Toast.makeText(this, "Service not running — complete setup first", android.widget.Toast.LENGTH_SHORT).show()
+        }
+
         binding.btnReset.setOnClickListener {
             prefs.clearAll()
             stopService(Intent(this, PhoneNapService::class.java))
