@@ -15,6 +15,16 @@ import kotlin.math.sqrt
 
 enum class FaceResult { KID, NOT_KID, NO_FACE }
 
+/** Result of a single enrollment frame check. */
+sealed class EnrollmentCheck {
+    object NoFace    : EnrollmentCheck()  // no face detected or eye landmarks missing
+    object TooSmall  : EnrollmentCheck()  // "Move closer"
+    object TooLarge  : EnrollmentCheck()  // "Move further away"
+    object OffCenter : EnrollmentCheck()  // "Centre your face"
+    object LowLight  : EnrollmentCheck()  // "Find better lighting"
+    data class Valid(val vector: FloatArray) : EnrollmentCheck()
+}
+
 /**
  * Face recognition pipeline:
  *
@@ -267,6 +277,75 @@ class FaceManager(private val context: Context) {
     }
 
     // ── Utilities ─────────────────────────────────────────────────────────────
+
+    // ── Enrollment frame check ─────────────────────────────────────────────────
+
+    /**
+     * Used by FaceEnrollActivity's ImageAnalysis loop.
+     * Validates the face against the on-screen circle geometry, checks lighting,
+     * requires eye landmarks, and — if all checks pass — returns a ready-to-store
+     * LBPH vector wrapped in [EnrollmentCheck.Valid].
+     *
+     * Circle is defined as a fixed fraction of the image short-edge so that it
+     * matches the [FaceGuideOverlay] circle (circleRadius = minOf(w,h) * 0.38).
+     */
+    suspend fun checkForEnrollment(bitmap: Bitmap, rotation: Int = 0): EnrollmentCheck {
+        val upright = rotateBitmap(bitmap, rotation)
+        val faces   = detector.process(InputImage.fromBitmap(upright, 0)).await()
+        val face    = faces.maxByOrNull { it.boundingBox.width() }
+            ?: return EnrollmentCheck.NoFace
+
+        // Circle in image-space (mirrors FaceGuideOverlay proportions)
+        val circleR  = minOf(upright.width, upright.height) * 0.38f
+        val circleCx = upright.width  / 2f
+        val circleCy = upright.height / 2f
+
+        val box      = face.boundingBox
+        val faceSize = maxOf(box.width(), box.height()).toFloat()
+        val dx       = box.exactCenterX() - circleCx
+        val dy       = box.exactCenterY() - circleCy
+        val dist     = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+        val circleD  = circleR * 2f
+
+        // Size out-of-range
+        if (faceSize < circleD * 0.70f) return EnrollmentCheck.TooSmall
+        if (faceSize > circleD * 0.95f) return EnrollmentCheck.TooLarge
+
+        // Off-centre
+        if (dist > circleR * 0.15f) return EnrollmentCheck.OffCenter
+
+        // Ideal fill range 75–90 %
+        if (faceSize < circleD * 0.75f) return EnrollmentCheck.TooSmall
+        if (faceSize > circleD * 0.90f) return EnrollmentCheck.TooLarge
+
+        // Lighting check on raw face crop
+        val rawCrop = cropFace(upright, face)
+        if (rawCrop != null && !hasAdequateLighting(rawCrop)) return EnrollmentCheck.LowLight
+
+        // Eye landmarks required for alignment
+        if (face.getLandmark(FaceLandmark.LEFT_EYE)  == null ||
+            face.getLandmark(FaceLandmark.RIGHT_EYE) == null)
+            return EnrollmentCheck.NoFace
+
+        val aligned = alignAndCrop(upright, face) ?: return EnrollmentCheck.NoFace
+        return EnrollmentCheck.Valid(extractLBPH(aligned))
+    }
+
+    /** Returns true if the average pixel brightness of [bmp] is >= 40 (0–255). */
+    private fun hasAdequateLighting(bmp: Bitmap): Boolean {
+        var total = 0L
+        var count = 0
+        // Sample every ~5th pixel for speed
+        val step = maxOf(1, minOf(bmp.width, bmp.height) / 20)
+        for (y in 0 until bmp.height step step) {
+            for (x in 0 until bmp.width step step) {
+                val p = bmp.getPixel(x, y)
+                total += ((p shr 16 and 0xFF) + (p shr 8 and 0xFF) + (p and 0xFF)) / 3
+                count++
+            }
+        }
+        return count == 0 || (total / count) >= 40
+    }
 
     private fun rotateBitmap(bitmap: Bitmap, rotation: Int): Bitmap {
         if (rotation == 0) return bitmap

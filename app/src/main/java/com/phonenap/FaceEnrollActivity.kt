@@ -1,79 +1,78 @@
 package com.phonenap
 
+import android.animation.ObjectAnimator
+import android.graphics.Bitmap
+import android.graphics.Color
 import android.os.Bundle
+import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.phonenap.databinding.ActivityFaceEnrollBinding
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * 25-sample multi-pose face enrollment.
+ * Face enrollment screen — mirrors Android face unlock UX.
  *
- * Poses (5 samples each):
- *   1. Straight   - baseline
- *   2. Left tilt  - lateral head movement
- *   3. Right tilt
- *   4. Chin up
- *   5. Chin down
+ * Flow:
+ *  1. Camera preview shows through the circle hole in the black overlay.
+ *  2. ImageAnalysis fires continuously; each frame is validated via
+ *     [FaceManager.checkForEnrollment].
+ *  3. Errors (too small / too large / off-centre / low light) are shown in red.
+ *  4. When the face is valid the progress ring starts filling automatically.
+ *  5. After [SAMPLE_COUNT] samples the ring turns green and enrollment is saved.
  *
- * Each sample requires ML Kit to detect both eye landmarks; frames without
- * eyes are silently retried (up to MAX_ATTEMPTS total attempts).
- * All vectors are stored individually — the detector compares against each
- * and takes the best cosine similarity score.
+ *  No button required — everything is automatic.
  */
 class FaceEnrollActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityFaceEnrollBinding
-    private var imageCapture: ImageCapture? = null
+    private val faceManager by lazy { FaceManager(this) }
 
-    private val collected    = mutableListOf<FloatArray>()
-    private var capturing    = false
-    private var attemptCount = 0   // total capture attempts (including retries)
+    private val collected     = mutableListOf<FloatArray>()
+    private var lastCaptureMsec = 0L
+    private val isProcessing  = AtomicBoolean(false)
+    private var enrollmentDone = false
 
-    // ── Guidance ──────────────────────────────────────────────────────────────
-
-    // 25 messages — one per successful sample
-    private val guidance = listOf(
-        // Pose 1: straight (samples 1-5)
-        "Look straight at the camera",
-        "Hold still — straight ahead",
-        "Keep looking forward",
-        "Good — stay straight",
-        "One more — eyes on the camera",
-        // Pose 2: turn left (samples 6-10)
-        "Slowly turn your head to the LEFT",
-        "A little more to the left",
-        "Good — hold that left position",
-        "Stay turned left",
-        "One more — head turned left",
-        // Pose 3: turn right (samples 11-15)
-        "Now slowly turn your head to the RIGHT",
-        "A little more to the right",
-        "Good — hold that right position",
-        "Stay turned right",
-        "One more — head turned right",
-        // Pose 4: chin up (samples 16-20)
-        "Tilt your head slightly UP",
-        "A bit more — chin up",
-        "Good — hold that tilt",
-        "Stay tilted up",
-        "One more — chin up",
-        // Pose 5: chin down (samples 21-25)
-        "Now tilt your head slightly DOWN",
-        "A bit more — chin down",
-        "Good — hold that tilt",
-        "Stay tilted down",
-        "Hold still — almost done!"
+    // ── Guidance text (cycles every 5 samples) ────────────────────────────────
+    private val poseGuidance = listOf(
+        "Look straight at the camera",        // 0-4
+        "Tilt your head slightly left",       // 5-9
+        "Tilt your head slightly right",      // 10-14
+        "Chin slightly up",                   // 15-19
+        "Look straight again — almost done!"  // 20-24
     )
+
+    // ── ImageAnalysis analyzer ────────────────────────────────────────────────
+
+    private val analyzer = ImageAnalysis.Analyzer { imageProxy: ImageProxy ->
+        // Drop frames if we are still processing the previous one
+        if (isProcessing.getAndSet(true)) {
+            imageProxy.close()
+            return@Analyzer
+        }
+        val bitmap   = imageProxy.toBitmap()
+        val rotation = imageProxy.imageInfo.rotationDegrees
+        imageProxy.close()
+
+        lifecycleScope.launch {
+            try {
+                processFrame(bitmap, rotation)
+            } finally {
+                isProcessing.set(false)
+            }
+        }
+    }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -82,16 +81,19 @@ class FaceEnrollActivity : AppCompatActivity() {
         binding = ActivityFaceEnrollBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.progressEnroll.max      = SAMPLE_COUNT
-        binding.progressEnroll.progress = 0
-        binding.tvEnrollTitle.text       = "Kid Face Scan"
-        binding.tvEnrollHint.text        = "Position the kid's face in the frame"
-
+        startPulseAnimation()
         startCamera()
+    }
 
-        binding.btnCapture.setOnClickListener {
-            if (!capturing) startCapture()
-        }
+    // ── Animation ─────────────────────────────────────────────────────────────
+
+    private fun startPulseAnimation() {
+        ObjectAnimator.ofFloat(binding.ivFaceIcon, "alpha", 1f, 0.3f).apply {
+            duration      = 1400
+            repeatCount   = ObjectAnimator.INFINITE
+            repeatMode    = ObjectAnimator.REVERSE
+            interpolator  = AccelerateDecelerateInterpolator()
+        }.start()
     }
 
     // ── Camera ────────────────────────────────────────────────────────────────
@@ -100,125 +102,115 @@ class FaceEnrollActivity : AppCompatActivity() {
         val future = ProcessCameraProvider.getInstance(this)
         future.addListener({
             val provider = future.get()
-            val preview  = Preview.Builder().build().also {
+
+            val preview = Preview.Builder().build().also {
                 it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
             }
-            imageCapture = ImageCapture.Builder()
-                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+
+            val analysis = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
+                .also { it.setAnalyzer(ContextCompat.getMainExecutor(this), analyzer) }
+
             try {
                 provider.unbindAll()
                 provider.bindToLifecycle(
-                    this, CameraSelector.DEFAULT_FRONT_CAMERA, preview, imageCapture
+                    this, CameraSelector.DEFAULT_FRONT_CAMERA, preview, analysis
                 )
             } catch (e: Exception) {
-                toast("Camera error: ${e.message}")
+                Toast.makeText(this, "Camera error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }, ContextCompat.getMainExecutor(this))
     }
 
-    // ── Capture loop ──────────────────────────────────────────────────────────
+    // ── Per-frame processing ──────────────────────────────────────────────────
 
-    private fun startCapture() {
-        capturing    = true
-        attemptCount = 0
-        collected.clear()
-        binding.btnCapture.isEnabled = false
-        captureNext()
-    }
+    private suspend fun processFrame(bitmap: Bitmap, rotation: Int) {
+        if (enrollmentDone) return
 
-    private fun captureNext() {
-        // Hard limit on total attempts to avoid infinite loops
-        if (attemptCount >= MAX_ATTEMPTS) {
-            finishEnrolment()
-            return
-        }
+        val check = faceManager.checkForEnrollment(bitmap, rotation)
 
-        val sampleIdx = collected.size   // 0-based index of next successful sample
-        if (sampleIdx >= SAMPLE_COUNT) {
-            finishEnrolment()
-            return
-        }
+        withContext(Dispatchers.Main) {
+            when (check) {
+                is EnrollmentCheck.NoFace    -> showError("No face detected")
+                is EnrollmentCheck.TooSmall  -> showError("Move closer")
+                is EnrollmentCheck.TooLarge  -> showError("Move further away")
+                is EnrollmentCheck.OffCenter -> showError("Centre your face")
+                is EnrollmentCheck.LowLight  -> showError("Find better lighting")
+                is EnrollmentCheck.Valid     -> {
+                    clearError()
+                    val now = System.currentTimeMillis()
+                    if (now - lastCaptureMsec >= CAPTURE_INTERVAL_MS &&
+                            collected.size < SAMPLE_COUNT) {
+                        collected.add(check.vector)
+                        lastCaptureMsec = now
 
-        // Show guidance for the upcoming sample
-        binding.tvEnrollHint.text  = guidance.getOrElse(sampleIdx) { "Hold still" }
-        binding.tvEnrollTitle.text = "Scanning... ${sampleIdx}/$SAMPLE_COUNT"
+                        // Update progress ring
+                        val progress = collected.size.toFloat() / SAMPLE_COUNT
+                        binding.faceGuideOverlay.progress = progress
 
-        // Longer pause at each pose boundary so kid has time to move
-        val delayMs = if (sampleIdx > 0 && sampleIdx % 5 == 0) DELAY_POSE_CHANGE_MS
-                      else DELAY_BETWEEN_MS
+                        // Update guidance subtitle at each pose boundary
+                        val poseIdx = (collected.size - 1) / 5
+                        binding.tvSubtitle.text =
+                            poseGuidance.getOrElse(poseIdx) { "Hold still" }
 
-        binding.root.postDelayed({
-            attemptCount++
-            imageCapture?.takePicture(
-                ContextCompat.getMainExecutor(this),
-                object : ImageCapture.OnImageCapturedCallback() {
-                    override fun onCaptureSuccess(image: ImageProxy) {
-                        val bmp      = image.toBitmap()
-                        val rotation = image.imageInfo.rotationDegrees
-                        image.close()
-
-                        lifecycleScope.launch {
-                            val fm  = FaceManager(this@FaceEnrollActivity)
-                            val vec = fm.extractVector(bmp, rotation)
-
-                            if (vec != null) {
-                                // Good sample: face detected with eye landmarks
-                                collected.add(vec)
-                                binding.progressEnroll.progress = collected.size
-                                binding.tvEnrollTitle.text =
-                                    "Scanning... ${collected.size}/$SAMPLE_COUNT"
-                            }
-                            // If null (no face or no eyes): silently retry same pose
-
-                            delay(50L)
-                            captureNext()
-                        }
-                    }
-                    override fun onError(e: ImageCaptureException) {
-                        lifecycleScope.launch {
-                            delay(DELAY_BETWEEN_MS)
-                            captureNext()
-                        }
+                        if (collected.size >= SAMPLE_COUNT) finishEnrolment()
                     }
                 }
-            )
-        }, delayMs)
+            }
+        }
     }
 
-    // ── Finalise ──────────────────────────────────────────────────────────────
+    // ── Error display ─────────────────────────────────────────────────────────
+
+    private fun showError(msg: String) {
+        binding.tvError.text       = msg
+        binding.tvError.visibility = View.VISIBLE
+    }
+
+    private fun clearError() {
+        binding.tvError.visibility = View.INVISIBLE
+    }
+
+    // ── Finish ────────────────────────────────────────────────────────────────
 
     private fun finishEnrolment() {
+        if (enrollmentDone) return
+        enrollmentDone = true
+
         if (collected.size < MIN_SAMPLES) {
-            toast("Only ${collected.size} samples — try better lighting or move closer")
-            binding.btnCapture.isEnabled = true
-            capturing    = false
-            attemptCount = 0
+            Toast.makeText(
+                this, "Only ${collected.size} samples — try better lighting",
+                Toast.LENGTH_SHORT
+            ).show()
+            // Reset for retry
             collected.clear()
-            binding.progressEnroll.progress = 0
-            binding.tvEnrollTitle.text = "Kid Face Scan"
-            binding.tvEnrollHint.text  = "Position the kid's face in the frame"
+            lastCaptureMsec = 0L
+            binding.faceGuideOverlay.progress = 0f
+            binding.faceGuideOverlay.ringColor = Color.parseColor("#00BCD4")
+            binding.tvSubtitle.text =
+                "Keep your face well-lit and look directly at your phone"
+            enrollmentDone = false
             return
         }
 
-        // Save ALL vectors — detector compares against each individually
+        // Success — flash the ring green then exit
+        binding.faceGuideOverlay.ringColor = Color.parseColor("#4CAF50")
+        binding.tvTitle.text    = "Face saved!"
+        binding.tvSubtitle.text = "Setup complete"
+        clearError()
+
         PrefsManager(this).saveKidFaceVectors(collected)
 
-        toast("Face enrolled! (${collected.size} samples across 5 poses)")
-        setResult(RESULT_OK)
-        finish()
+        binding.root.postDelayed({
+            setResult(RESULT_OK)
+            finish()
+        }, 1500)
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private fun toast(msg: String) =
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-
     companion object {
-        private const val SAMPLE_COUNT         = 25
-        private const val MIN_SAMPLES          = 15    // minimum to accept enrollment
-        private const val MAX_ATTEMPTS         = 60    // hard cap to prevent infinite loops
-        private const val DELAY_BETWEEN_MS     = 400L  // gap between consecutive frames
-        private const val DELAY_POSE_CHANGE_MS = 2000L // pause when switching pose
+        private const val SAMPLE_COUNT        = 25
+        private const val MIN_SAMPLES         = 15
+        private const val CAPTURE_INTERVAL_MS = 400L   // min ms between stored samples
     }
 }
