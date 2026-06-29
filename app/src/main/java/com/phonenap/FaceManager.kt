@@ -94,6 +94,6 @@ class FaceManager(private val context: Context) {
     }
 
     companion object {
-        private const val THRESHOLD = 0.70f
+        private const val THRESHOLD = 0.82f
     }
 }

@@ -75,6 +75,7 @@ class PhoneNapService : Service(), LifecycleOwner {
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
 
         registerMotionSensor()
+        startPeriodicScan()
 
         // If active before restart, restore overlay
         if (prefs.isActive()) overlayManager.show()
@@ -92,6 +93,19 @@ class PhoneNapService : Service(), LifecycleOwner {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    // ── Periodic scan fallback ────────────────────────────────────────────────
+
+    private fun startPeriodicScan() {
+        scope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(20_000L) // every 20 seconds
+                if (!isAnalysing && !prefs.isActive()) {
+                    runFaceScan()
+                }
+            }
+        }
+    }
 
     // ── Motion sensor ─────────────────────────────────────────────────────────
 
