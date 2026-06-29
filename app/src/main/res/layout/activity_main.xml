@@ -1,110 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0D0D0D">
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="#050505">
 
-    <LinearLayout
+    <ImageView
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:src="@drawable/ic_tile"
+        android:alpha="0.5"
+        android:layout_marginBottom="20dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="PhoneNap"
+        android:textColor="#BBBBBB"
+        android:textSize="28sp"
+        android:fontFamily="sans-serif-light"
+        android:letterSpacing="0.08"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Automatic face-based screen control"
+        android:textColor="#333333"
+        android:textSize="13sp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="48dp"/>
+
+    <TextView
+        android:id="@+id/tvSetupStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:text=""
+        android:textColor="#666666"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:layout_marginBottom="32dp"
+        android:lineSpacingExtra="4dp"/>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="😴 PhoneNap"
-            android:textSize="30sp"
-            android:textColor="#888888"
-            android:fontFamily="sans-serif-light"
-            android:layout_marginBottom="8dp"/>
+    <Button
+        android:id="@+id/btnSetup"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="Start Setup"
+        android:textColor="#000000"
+        android:backgroundTint="#CCCCCC"
+        android:layout_marginBottom="12dp"/>
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Screen-nap mode for kids. No PIN, no Device Admin. Parent fingerprint unlocks."
-            android:textSize="13sp"
-            android:textColor="#444444"
-            android:lineSpacingExtra="4dp"
-            android:layout_marginBottom="36dp"/>
+    <Button
+        android:id="@+id/btnReset"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Reset &amp; Start Over"
+        android:textColor="#444444"
+        android:backgroundTint="@android:color/transparent"
+        android:textSize="12sp"/>
 
-        <!-- Step 1 — Accessibility -->
-        <TextView
-            android:id="@+id/tvAccessibilityStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="❌ Accessibility Service: Not enabled"
-            android:textColor="#777777"
-            android:textSize="13sp"
-            android:layout_marginBottom="10dp"/>
-
-        <Button
-            android:id="@+id/btnEnableAccessibility"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Step 1 — Enable Accessibility Service"
-            android:layout_marginBottom="8dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="In Accessibility settings, find PhoneNap Overlay and turn it ON."
-            android:textColor="#3A3A3A"
-            android:textSize="12sp"
-            android:layout_marginBottom="32dp"/>
-
-        <!-- Step 2 — Biometric -->
-        <TextView
-            android:id="@+id/tvBiometricStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="✅ Biometric: Ready"
-            android:textColor="#777777"
-            android:textSize="13sp"
-            android:layout_marginBottom="8dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Step 2 — If not enrolled: Settings → Security → Fingerprint."
-            android:textColor="#3A3A3A"
-            android:textSize="12sp"
-            android:layout_marginBottom="32dp"/>
-
-        <!-- Step 3 — Add tile -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Step 3 — Add PhoneNap to Quick Settings"
-            android:textColor="#777777"
-            android:textSize="13sp"
-            android:layout_marginBottom="6dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Pull down twice → tap the pencil icon → drag 😴 PhoneNap into the tile row."
-            android:textColor="#3A3A3A"
-            android:textSize="12sp"
-            android:lineSpacingExtra="4dp"
-            android:layout_marginBottom="40dp"/>
-
-        <!-- How to use -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="How to use"
-            android:textColor="#555555"
-            android:textSize="14sp"
-            android:layout_marginBottom="10dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="• Tap 😴 PhoneNap in Quick Settings to activate\n• Screen goes grayscale and dims over 45 seconds\n• Phone locks itself to sleep\n• Kid presses power → overlay fires instantly\n• Tap the fingerprint icon → parent unlocks with biometric\n• Tile tap (when ON) also triggers parent biometric"
-            android:textColor="#3A3A3A"
-            android:textSize="12sp"
-            android:lineSpacingExtra="5dp"/>
-
-    </LinearLayout>
-</ScrollView>
+</LinearLayout>

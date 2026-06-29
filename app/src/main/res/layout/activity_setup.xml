@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#050505"
+    android:padding="32dp">
+
+    <TextView
+        android:id="@+id/tvProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Step 1 of 5"
+        android:textColor="#333333"
+        android:textSize="12sp"
+        android:letterSpacing="0.1"
+        android:layout_marginBottom="32dp"/>
+
+    <TextView
+        android:id="@+id/tvStepTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#AAAAAA"
+        android:textSize="24sp"
+        android:fontFamily="sans-serif-light"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:id="@+id/tvStepDesc"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:text=""
+        android:textColor="#555555"
+        android:textSize="14sp"
+        android:lineSpacingExtra="6dp"/>
+
+    <Button
+        android:id="@+id/btnNext"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="Next"
+        android:textColor="#000000"
+        android:backgroundTint="#CCCCCC"/>
+
+</LinearLayout>

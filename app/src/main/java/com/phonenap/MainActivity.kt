@@ -1,57 +1,62 @@
 package com.phonenap
 
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.appcompat.app.AppCompatActivity
-import androidx.biometric.BiometricManager
+import androidx.core.content.ContextCompat
 import com.phonenap.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var prefs: PrefsManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        prefs = PrefsManager(this)
 
-        binding.btnEnableAccessibility.setOnClickListener {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        binding.btnSetup.setOnClickListener {
+            startActivity(Intent(this, SetupActivity::class.java))
+        }
+
+        binding.btnReset.setOnClickListener {
+            prefs.clearAll()
+            stopService(Intent(this, PhoneNapService::class.java))
+            refresh()
         }
     }
 
     override fun onResume() {
         super.onResume()
-        updateStatus()
+        refresh()
     }
 
-    private fun updateStatus() {
-        val accOk = isAccessibilityEnabled()
-        val bioOk = isBiometricAvailable()
+    private fun refresh() {
+        val setupDone   = prefs.isSetupComplete()
+        val overlayOk   = Settings.canDrawOverlays(this)
+        val parentReady = prefs.hasParentFace()
+        val kidReady    = prefs.hasKidFace()
 
-        binding.tvAccessibilityStatus.text =
-            if (accOk) "✅ Accessibility Service: Enabled"
-            else       "❌ Accessibility Service: Not enabled"
+        binding.tvSetupStatus.text = when {
+            !overlayOk   -> "⚠ Draw over apps permission required"
+            !parentReady -> "⚠ Parent face not enrolled"
+            !kidReady    -> "⚠ Kid face not enrolled"
+            setupDone    -> "✓ PhoneNap is active and monitoring"
+            else         -> "Setup incomplete"
+        }
 
-        binding.tvBiometricStatus.text =
-            if (bioOk) "✅ Biometric: Ready"
-            else       "⚠️  No fingerprint enrolled — go to Settings → Security → Fingerprint"
+        binding.btnSetup.text = if (setupDone) "Re-run Setup" else "Start Setup"
 
-        binding.btnEnableAccessibility.isEnabled = !accOk
-    }
-
-    private fun isAccessibilityEnabled(): Boolean {
-        val enabled = Settings.Secure.getString(
-            contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        ) ?: return false
-        val target = "$packageName/${PhoneNapAccessibilityService::class.java.name}"
-        return enabled.split(':').any { it.equals(target, ignoreCase = true) }
-    }
-
-    private fun isBiometricAvailable(): Boolean {
-        val bm = BiometricManager.from(this)
-        return bm.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) ==
-               BiometricManager.BIOMETRIC_SUCCESS
+        // Auto-start service once setup is complete
+        if (setupDone && overlayOk) {
+            ContextCompat.startForegroundService(
+                this, Intent(this, PhoneNapService::class.java)
+            )
+        }
     }
 }
