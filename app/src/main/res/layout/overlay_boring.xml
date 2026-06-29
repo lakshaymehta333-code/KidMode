@@ -2,19 +2,29 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0D0D0D">
+    android:background="#000000"
+    android:fitsSystemWindows="false">
 
     <!-- Clock -->
-    <TextView
-        android:id="@+id/tvClock"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
-        android:layout_marginTop="80dp"
-        android:text="12:00"
-        android:textColor="#3A3A3A"
-        android:textSize="52sp"
-        android:fontFamily="sans-serif-light"/>
+        android:layout_marginTop="96dp"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/tvClock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="12:00"
+            android:textColor="#1A1A1A"
+            android:textSize="72sp"
+            android:fontFamily="sans-serif-thin"
+            android:letterSpacing="0.05"/>
+
+    </LinearLayout>
 
     <!-- Centre content -->
     <LinearLayout
@@ -26,74 +36,83 @@
         android:paddingLeft="48dp"
         android:paddingRight="48dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="😴"
-            android:textSize="48sp"/>
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_tile"
+            android:alpha="0.18"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="20dp"
             android:text="Phone is napping"
-            android:textColor="#4A4A4A"
-            android:textSize="18sp"
-            android:fontFamily="sans-serif-light"/>
+            android:textColor="#222222"
+            android:textSize="22sp"
+            android:fontFamily="sans-serif-light"
+            android:letterSpacing="0.02"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Nothing to see here.\nGo play outside or read a book."
-            android:textColor="#333333"
-            android:textSize="12sp"
-            android:gravity="center"
-            android:lineSpacingExtra="4dp"/>
+            android:text="Nothing to see here"
+            android:textColor="#161616"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-light"
+            android:letterSpacing="0.03"/>
 
-        <!-- Boring placeholder lines -->
-        <View android:layout_width="match_parent" android:layout_height="6dp"
-            android:layout_marginTop="28dp" android:background="#1C1C1C"/>
-        <View android:layout_width="180dp"       android:layout_height="6dp"
-            android:layout_marginTop="8dp"  android:background="#191919"
-            android:layout_gravity="center_horizontal"/>
-        <View android:layout_width="match_parent" android:layout_height="6dp"
-            android:layout_marginTop="8dp"  android:background="#1C1C1C"/>
-        <View android:layout_width="140dp"       android:layout_height="6dp"
-            android:layout_marginTop="8dp"  android:background="#191919"
-            android:layout_gravity="center_horizontal"/>
     </LinearLayout>
 
-    <!-- Progress bar (bottom) -->
+    <!-- Bottom: progress bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingLeft="32dp"
+        android:paddingRight="32dp"
+        android:paddingBottom="48dp">
 
         <TextView
             android:id="@+id/progressLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Going dark in 45s…"
-            android:textColor="#2E2E2E"
-            android:textSize="11sp"
+            android:text="Screen off in 45s"
+            android:textColor="#1A1A1A"
+            android:textSize="10sp"
+            android:letterSpacing="0.1"
             android:gravity="center"
-            android:layout_marginBottom="6dp"/>
+            android:fontFamily="sans-serif-medium"
+            android:layout_marginBottom="8dp"/>
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="3dp"
-            android:background="#171717">
+            android:layout_height="2dp"
+            android:background="#0F0F0F">
+
             <View
                 android:id="@+id/progressFill"
                 android:layout_width="match_parent"
-                android:layout_height="3dp"
-                android:background="#2E2E2E"
+                android:layout_height="2dp"
+                android:background="#1E1E1E"
                 android:scaleX="0"
                 android:transformPivotX="0dp"/>
+
         </FrameLayout>
+
     </LinearLayout>
+
+    <!-- PhoneNap branding -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="24dp"
+        android:text="PhoneNap"
+        android:textColor="#111111"
+        android:textSize="11sp"
+        android:letterSpacing="0.2"
+        android:fontFamily="sans-serif-medium"/>
 
 </FrameLayout>

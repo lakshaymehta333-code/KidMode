@@ -184,16 +184,23 @@ class PhoneNapAccessibilityService : AccessibilityService() {
     private fun inflate(layoutRes: Int): View =
         LayoutInflater.from(this).inflate(layoutRes, null)
 
+    @Suppress("DEPRECATION")
     private fun makeParams() = WindowManager.LayoutParams(
         WindowManager.LayoutParams.MATCH_PARENT,
         WindowManager.LayoutParams.MATCH_PARENT,
         WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+        WindowManager.LayoutParams.FLAG_FULLSCREEN or
         WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
         WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
         PixelFormat.OPAQUE
-    ).also { it.screenBrightness = 0.8f }
+    ).also {
+        it.screenBrightness = 0.8f
+        it.layoutInDisplayCutoutMode =
+            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+    }
 
     private fun applyGrayscale(view: View) {
         val paint = Paint()
