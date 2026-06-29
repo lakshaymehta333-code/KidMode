@@ -147,9 +147,9 @@ class PhoneNapService : Service(), LifecycleOwner {
                 return
             }
 
-            // Capture FRAMES_PER_SCAN frames and take the highest-confidence result
-            var bestResult = FaceResult.NO_FACE
-            var kidSeen    = 0
+            // Capture FRAMES_PER_SCAN frames, average cosine similarity scores
+            var scoreSum    = 0f
+            var validFrames = 0
 
             repeat(FRAMES_PER_SCAN) { frameIdx ->
                 if (frameIdx > 0) delay(FRAME_INTERVAL_MS)
@@ -159,20 +159,27 @@ class PhoneNapService : Service(), LifecycleOwner {
                     return@repeat
                 }
 
-                val result = faceManager.analyze(bmp, rot)
-                Log.d(TAG, "Frame $frameIdx → $result")
-
-                when (result) {
-                    FaceResult.KID     -> kidSeen++
-                    FaceResult.NOT_KID -> { /* counted below */ }
-                    FaceResult.NO_FACE -> { /* no face, skip */ }
+                val score = faceManager.analyzeScore(bmp, rot)
+                if (score != null) {
+                    scoreSum += score
+                    validFrames++
+                    Log.d(TAG, "Frame $frameIdx score=%.4f".format(score))
+                } else {
+                    Log.d(TAG, "Frame $frameIdx: no face / no eyes")
                 }
-                bestResult = result
             }
 
-            // Need at least 2 out of 3 frames to confirm kid (reduces false positives)
-            val confirmed = kidSeen >= (FRAMES_PER_SCAN / 2 + 1)
-            Log.d(TAG, "Kid seen in $kidSeen/$FRAMES_PER_SCAN frames → confirmed=$confirmed")
+            // Average score across valid frames; fire overlay if >= threshold
+            val confirmed = if (validFrames > 0) {
+                val avg = scoreSum / validFrames
+                Log.d(TAG, "Avg score=%.4f valid=$validFrames threshold=%.2f -> %s".format(
+                    avg, FaceManager.THRESHOLD,
+                    if (avg >= FaceManager.THRESHOLD) "KID" else "NOT KID"))
+                avg >= FaceManager.THRESHOLD
+            } else {
+                Log.d(TAG, "No valid frames in this scan")
+                false
+            }
 
             if (confirmed) {
                 prefs.setActive(true)

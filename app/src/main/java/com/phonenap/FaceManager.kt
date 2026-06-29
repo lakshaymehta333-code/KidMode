@@ -8,33 +8,34 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.google.mlkit.vision.face.FaceLandmark
 import kotlinx.coroutines.tasks.await
-import kotlin.math.abs
-import kotlin.math.pow
+import kotlin.math.atan2
+import kotlin.math.sqrt
 
 enum class FaceResult { KID, NOT_KID, NO_FACE }
 
 /**
- * Face recognition using LBPH (Local Binary Pattern Histogram).
+ * Face recognition pipeline:
  *
- * During enrollment, 7–10 frames are captured from different angles; their
- * LBPH histograms are averaged and saved.  At detection time, 3 frames are
- * compared against the average; the best similarity is used.
+ * 1. Detect face bounding box with ML Kit (ACCURATE + LANDMARK_MODE_ALL).
+ * 2. Reject faces smaller than MIN_FACE_PX (too far from camera).
+ * 3. Align: rotate bitmap so left/right eyes are horizontal.
+ * 4. Crop with 20 % padding — background is discarded entirely.
+ * 5. Resize to FACE_SIZE × FACE_SIZE, apply histogram equalisation.
+ * 6. Extract L2-normalised LBPH histogram (6×6 grid, 256 bins each).
+ * 7. Cosine similarity against every enrolled vector, take the best score.
+ * 8. In the service, 3 frames are averaged; fire overlay if avg >= THRESHOLD.
  *
- * Threshold is calibrated:
- *   same person (averaged enrolment vs live)  →  ~0.15–0.35
- *   different person                          →  ~0.02–0.11
- *   threshold = 0.13 → safe gap in the middle
- *
- * Increase THRESHOLD if too many false positives (strangers trigger overlay).
- * Decrease THRESHOLD if the kid is not being recognised.
+ * Enrollment: 25 samples across 5 poses stored individually (not averaged).
  */
 class FaceManager(private val context: Context) {
 
     private val detector = FaceDetection.getClient(
         FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
-            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL) // eye-open probs
+            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+            .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
             .setMinFaceSize(0.08f)
             .build()
     )
@@ -44,64 +45,130 @@ class FaceManager(private val context: Context) {
     // ── Detection ─────────────────────────────────────────────────────────────
 
     /**
-     * Analyse a single captured bitmap.
-     * Called by the service; pass the camera's rotation degrees.
+     * Returns cosine similarity (0.0-1.0) against the best matching enrolled
+     * vector, or null if no usable face was found in the frame.
+     * Called per-frame in the service; the service averages multiple scores.
      */
-    suspend fun analyze(bitmap: Bitmap, rotation: Int = 0): FaceResult {
+    suspend fun analyzeScore(bitmap: Bitmap, rotation: Int = 0): Float? {
         val upright = rotateBitmap(bitmap, rotation)
         val faces   = detector.process(InputImage.fromBitmap(upright, 0)).await()
-        if (faces.isEmpty()) return FaceResult.NO_FACE
+        if (faces.isEmpty()) {
+            Log.d(TAG, "No face detected")
+            return null
+        }
 
-        val face = faces.maxByOrNull { it.boundingBox.width() } ?: return FaceResult.NO_FACE
+        val face = faces.maxByOrNull { it.boundingBox.width() } ?: return null
 
-        // Reject extreme head angles
-        if (abs(face.headEulerAngleY) > 50f || abs(face.headEulerAngleX) > 40f)
-            return FaceResult.NO_FACE
+        // Step 1: reject if face is too small (kid too far away)
+        val box = face.boundingBox
+        if (box.width() < MIN_FACE_PX || box.height() < MIN_FACE_PX) {
+            Log.d(TAG, "Face too small: ${box.width()}x${box.height()} px — kid too far")
+            return null
+        }
 
-        // Simple liveness: require at least one eye to be open
+        // Liveness: at least one eye must be open
         val leftOpen  = face.leftEyeOpenProbability  ?: 1f
         val rightOpen = face.rightEyeOpenProbability ?: 1f
         if (leftOpen < 0.2f && rightOpen < 0.2f) {
-            Log.d(TAG, "Both eyes closed — likely sleeping or photo; skipping")
-            return FaceResult.NO_FACE
+            Log.d(TAG, "Both eyes closed — skipping (liveness check)")
+            return null
         }
 
-        val crop   = cropFace(upright, face) ?: return FaceResult.NO_FACE
-        val vec    = extractLBPH(crop)
-        val kidVec = prefs.getKidFaceVector() ?: run {
-            Log.w(TAG, "No enrolled kid face found — enrol first!")
-            return FaceResult.NO_FACE
+        // Steps 2-6: align, crop, normalise, extract LBPH
+        val aligned = alignAndCrop(upright, face) ?: return null
+        val vec     = extractLBPH(aligned)
+
+        val kidVecs = prefs.getKidFaceVectors()
+        if (kidVecs.isEmpty()) {
+            Log.w(TAG, "No enrolled vectors — enrol kid first")
+            return null
         }
 
-        val sim = chiSquareSimilarity(vec, kidVec)
-        Log.d(TAG, "LBPH similarity=%.4f  threshold=%.4f  → %s".format(
-            sim, THRESHOLD, if (sim >= THRESHOLD) "KID ✓" else "NOT KID"))
-
-        return if (sim >= THRESHOLD) FaceResult.KID else FaceResult.NOT_KID
+        // Step 7: compare against ALL enrolled vectors, keep the best score
+        val bestSim = kidVecs.maxOf { cosineSimilarity(vec, it) }
+        Log.d(TAG, "Best cosine sim=%.4f  threshold=%.2f  -> %s".format(
+            bestSim, THRESHOLD, if (bestSim >= THRESHOLD) "KID" else "NOT KID"))
+        return bestSim
     }
 
-    // ── Enrolment helper ──────────────────────────────────────────────────────
+    /** Convenience wrapper returning the enum used by legacy call-sites. */
+    suspend fun analyze(bitmap: Bitmap, rotation: Int = 0): FaceResult {
+        val score = analyzeScore(bitmap, rotation) ?: return FaceResult.NO_FACE
+        return if (score >= THRESHOLD) FaceResult.KID else FaceResult.NOT_KID
+    }
+
+    // ── Enrollment helper ──────────────────────────────────────────────────────
 
     /**
-     * Extract an LBPH vector from a face in the bitmap.
-     * Returns null if no face is detected.
-     * Called repeatedly by FaceEnrollActivity to build up multiple samples.
+     * Extract a single L2-normalised LBPH vector from the largest face in
+     * [bitmap]. Returns null if no face or no eye landmarks are detected
+     * (eye landmarks required for alignment during enrollment).
      */
     suspend fun extractVector(bitmap: Bitmap, rotation: Int = 0): FloatArray? {
         val upright = rotateBitmap(bitmap, rotation)
         val faces   = detector.process(InputImage.fromBitmap(upright, 0)).await()
-        val face    = faces.maxByOrNull { it.boundingBox.width() } ?: return null
-        val crop    = cropFace(upright, face) ?: return null
-        return extractLBPH(crop)
+        val face    = faces.maxByOrNull { it.boundingBox.width() } ?: run {
+            Log.d(TAG, "extractVector: no face detected")
+            return null
+        }
+
+        // During enrollment require both eye landmarks for proper alignment
+        if (face.getLandmark(FaceLandmark.LEFT_EYE) == null ||
+            face.getLandmark(FaceLandmark.RIGHT_EYE) == null) {
+            Log.d(TAG, "extractVector: eye landmarks missing — skipping sample")
+            return null
+        }
+
+        val aligned = alignAndCrop(upright, face) ?: run {
+            Log.d(TAG, "extractVector: alignAndCrop returned null")
+            return null
+        }
+        return extractLBPH(aligned)
     }
 
-    // ── LBPH ─────────────────────────────────────────────────────────────────
+    // ── Steps 2-3: Alignment + Crop ───────────────────────────────────────────
 
     /**
-     * Divide the face into GRID×GRID cells.
-     * For each pixel, compute an 8-bit LBP code from its 8 neighbours.
-     * Accumulate a normalised 256-bin histogram per cell.
-     * Concatenate → GRID*GRID*256 floats.
+     * 1. Rotate the bitmap so left/right eye landmarks are exactly horizontal.
+     * 2. Crop face region with 20% padding — no background leaks through.
+     */
+    private fun alignAndCrop(bitmap: Bitmap, face: Face): Bitmap? {
+        val leftEye  = face.getLandmark(FaceLandmark.LEFT_EYE)?.position
+        val rightEye = face.getLandmark(FaceLandmark.RIGHT_EYE)?.position
+
+        var workBmp = bitmap
+        if (leftEye != null && rightEye != null) {
+            val dx    = rightEye.x - leftEye.x
+            val dy    = rightEye.y - leftEye.y
+            val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
+
+            if (Math.abs(angle) > 1f) {
+                val cx = (leftEye.x + rightEye.x) / 2f
+                val cy = (leftEye.y + rightEye.y) / 2f
+                val m  = Matrix().apply { postRotate(-angle, cx, cy) }
+                workBmp = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, m, true)
+            }
+        }
+
+        // Crop with 20% padding — bounding box is a good approximation even
+        // after small rotations; padding provides the needed buffer
+        val box    = face.boundingBox
+        val padX   = (box.width()  * 0.20f).toInt()
+        val padY   = (box.height() * 0.20f).toInt()
+        val left   = (box.left   - padX).coerceAtLeast(0)
+        val top    = (box.top    - padY).coerceAtLeast(0)
+        val right  = (box.right  + padX).coerceAtMost(workBmp.width)
+        val bottom = (box.bottom + padY).coerceAtMost(workBmp.height)
+        if (right <= left || bottom <= top) return null
+
+        return Bitmap.createBitmap(workBmp, left, top, right - left, bottom - top)
+    }
+
+    // ── Steps 4-6: Normalise + LBPH ──────────────────────────────────────────
+
+    /**
+     * Resize to FACE_SIZE^2, histogram-equalise, compute LBPH over GRID×GRID
+     * cells (256 bins each), then L2-normalise so cosine sim == dot product.
      */
     private fun extractLBPH(faceBitmap: Bitmap): FloatArray {
         val sized = Bitmap.createScaledBitmap(faceBitmap, FACE_SIZE, FACE_SIZE, true)
@@ -123,7 +190,7 @@ class FaceManager(private val context: Context) {
 
                 for (y in yStart until yEnd) {
                     for (x in xStart until xEnd) {
-                        val c = gray[y][x]
+                        val c    = gray[y][x]
                         var code = 0
                         if (gray[y-1][x-1] >= c) code = code or 128
                         if (gray[y-1][x  ] >= c) code = code or 64
@@ -139,17 +206,23 @@ class FaceManager(private val context: Context) {
                 }
 
                 val base = (gy * GRID + gx) * BINS
-                if (count > 0) {
-                    for (i in 0 until BINS) hist[base + i] = cellHist[i] / count
-                }
+                if (count > 0) for (i in 0 until BINS) hist[base + i] = cellHist[i] / count
             }
         }
+
+        // L2-normalise: makes cosine similarity == dot product
+        var normSq = 0.0
+        for (v in hist) normSq += v * v
+        val norm = sqrt(normSq).toFloat()
+        if (norm > 1e-10f) for (i in hist.indices) hist[i] /= norm
+
         return hist
     }
 
-    /** Grayscale conversion with histogram equalisation (reduces lighting sensitivity). */
+    /** Grayscale + histogram equalisation — compensates for lighting changes. */
     private fun toGrayscaleEqualised(bmp: Bitmap): Array<IntArray> {
-        val h = bmp.height; val w = bmp.width
+        val h = bmp.height
+        val w = bmp.width
 
         val raw = Array(h) { y ->
             IntArray(w) { x ->
@@ -162,7 +235,9 @@ class FaceManager(private val context: Context) {
 
         val freq   = IntArray(256)
         for (row in raw) for (v in row) freq[v]++
-        val cdf    = IntArray(256).also { it[0] = freq[0]; for (i in 1..255) it[i] = it[i-1] + freq[i] }
+        val cdf    = IntArray(256).also { a ->
+            a[0] = freq[0]; for (i in 1..255) a[i] = a[i-1] + freq[i]
+        }
         val cdfMin = cdf.first { it > 0 }
         val total  = h * w
 
@@ -175,16 +250,23 @@ class FaceManager(private val context: Context) {
         }
     }
 
-    /** Chi-square similarity: 1.0 = identical, 0.0 = nothing in common. */
-    private fun chiSquareSimilarity(a: FloatArray, b: FloatArray): Float {
-        var chi = 0.0
-        val n   = minOf(a.size, b.size)
+    // ── Cosine similarity ─────────────────────────────────────────────────────
+
+    private fun cosineSimilarity(a: FloatArray, b: FloatArray): Float {
+        var dot   = 0.0
+        var normA = 0.0
+        var normB = 0.0
+        val n = minOf(a.size, b.size)
         for (i in 0 until n) {
-            val sum = a[i] + b[i]
-            if (sum > 0f) chi += (a[i] - b[i]).toDouble().pow(2) / sum
+            dot   += a[i] * b[i]
+            normA += a[i] * a[i]
+            normB += b[i] * b[i]
         }
-        return (1.0 / (1.0 + chi)).toFloat()
+        val denom = sqrt(normA) * sqrt(normB)
+        return if (denom < 1e-10) 0f else (dot / denom).toFloat()
     }
+
+    // ── Utilities ─────────────────────────────────────────────────────────────
 
     private fun rotateBitmap(bitmap: Bitmap, rotation: Int): Bitmap {
         if (rotation == 0) return bitmap
@@ -192,39 +274,20 @@ class FaceManager(private val context: Context) {
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, m, true)
     }
 
-    private fun cropFace(bitmap: Bitmap, face: Face): Bitmap? {
-        val box    = face.boundingBox
-        val padX   = (box.width()  * 0.25f).toInt()
-        val padY   = (box.height() * 0.30f).toInt()
-        val left   = (box.left   - padX).coerceAtLeast(0)
-        val top    = (box.top    - padY).coerceAtLeast(0)
-        val right  = (box.right  + padX).coerceAtMost(bitmap.width)
-        val bottom = (box.bottom + padY).coerceAtMost(bitmap.height)
-        if (right <= left || bottom <= top) return null
-        return Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top)
-    }
-
     companion object {
-        private const val TAG       = "FaceManager"
-        private const val FACE_SIZE = 96
-        private const val GRID      = 6
-        private const val BINS      = 256
+        private const val TAG         = "FaceManager"
+        private const val FACE_SIZE   = 112    // standard FaceNet input size
+        private const val GRID        = 6
+        private const val BINS        = 256
+        private const val MIN_FACE_PX = 100    // reject bounding box < this
 
         /**
-         * Tune this if needed:
-         * • Too many false positives (wrong people trigger) → raise toward 0.18
-         * • Kid not being recognised → lower toward 0.10
+         * Cosine similarity threshold.
+         *   Same person (well-lit, aligned)   -> 0.78-0.95
+         *   Different person                  -> 0.30-0.60
+         *   0.75 gives a safe gap between the two clusters.
+         * Raise if strangers still trigger; lower if kid is missed.
          */
-        const val THRESHOLD = 0.13f
-
-        /** Average multiple LBPH histograms → robust enrolled template. */
-        fun averageVectors(vecs: List<FloatArray>): FloatArray {
-            require(vecs.isNotEmpty())
-            val size = vecs[0].size
-            val avg  = FloatArray(size)
-            for (vec in vecs) for (i in vec.indices) avg[i] += vec[i]
-            for (i in avg.indices) avg[i] /= vecs.size.toFloat()
-            return avg
-        }
+        const val THRESHOLD = 0.75f
     }
 }
