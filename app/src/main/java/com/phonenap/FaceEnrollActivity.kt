@@ -18,19 +18,13 @@ class FaceEnrollActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityFaceEnrollBinding
     private var imageCapture: ImageCapture? = null
-    private var isParent = true
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFaceEnrollBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        isParent = intent.getBooleanExtra(EXTRA_IS_PARENT, true)
-        binding.tvEnrollTitle.text =
-            if (isParent) "Parent Face Scan" else "Kid Face Scan"
-        binding.tvEnrollHint.text =
-            if (isParent) "Look straight at the camera.\nThis face will unlock the phone."
-            else          "Kid should look straight at the camera.\nThis face will trigger the lock."
+        binding.tvEnrollTitle.text = "Kid Face Scan"
+        binding.tvEnrollHint.text  = "Kid should look straight at the camera.\nThis face will trigger the lock."
 
         startCamera()
         binding.btnCapture.setOnClickListener { captureAndEnroll() }
@@ -69,8 +63,7 @@ class FaceEnrollActivity : AppCompatActivity() {
                     image.close()
                     lifecycleScope.launch {
                         val fm = FaceManager(this@FaceEnrollActivity)
-                        val ok = if (isParent) fm.enrollParent(bitmap)
-                                 else          fm.enrollKid(bitmap)
+                        val ok = fm.enrollKid(bitmap)
                         if (ok) {
                             toast("Face saved!")
                             setResult(RESULT_OK)
@@ -93,7 +86,5 @@ class FaceEnrollActivity : AppCompatActivity() {
     private fun toast(msg: String) =
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
-    companion object {
-        const val EXTRA_IS_PARENT = "is_parent"
-    }
+    companion object
 }

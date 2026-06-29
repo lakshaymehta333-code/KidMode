@@ -37,17 +37,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
-        val setupDone   = prefs.isSetupComplete()
-        val overlayOk   = Settings.canDrawOverlays(this)
-        val parentReady = prefs.hasParentFace()
-        val kidReady    = prefs.hasKidFace()
+        val setupDone = prefs.isSetupComplete()
+        val overlayOk = Settings.canDrawOverlays(this)
+        val kidReady  = prefs.hasKidFace()
 
         binding.tvSetupStatus.text = when {
-            !overlayOk   -> "⚠ Draw over apps permission required"
-            !parentReady -> "⚠ Parent face not enrolled"
-            !kidReady    -> "⚠ Kid face not enrolled"
-            setupDone    -> "✓ PhoneNap is active and monitoring"
-            else         -> "Setup incomplete"
+            !overlayOk -> "⚠ Draw over apps permission required"
+            !kidReady  -> "⚠ Kid face not enrolled"
+            setupDone  -> "✓ PhoneNap is active and monitoring"
+            else       -> "Setup incomplete"
         }
 
         binding.btnSetup.text = if (setupDone) "Re-run Setup" else "Start Setup"
