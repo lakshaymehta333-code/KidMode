@@ -223,7 +223,7 @@ class FaceManager(private val context: Context) {
             val size = vecs[0].size
             val avg  = FloatArray(size)
             for (vec in vecs) for (i in vec.indices) avg[i] += vec[i]
-            for (i in avg.indices) avg[i] /= vecs.size
+            for (i in avg.indices) avg[i] /= vecs.size.toFloat()
             return avg
         }
     }
