@@ -2,8 +2,11 @@ package com.phonenap
 
 import android.content.Context
 import android.graphics.PixelFormat
+import android.graphics.Point
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
@@ -62,19 +65,34 @@ class OverlayManager(private val context: Context) {
     }
 
     @Suppress("DEPRECATION")
-    private fun makeParams() = WindowManager.LayoutParams(
-        WindowManager.LayoutParams.MATCH_PARENT,
-        WindowManager.LayoutParams.MATCH_PARENT,
-        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-        WindowManager.LayoutParams.FLAG_FULLSCREEN or
-        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
-        PixelFormat.OPAQUE
-    ).also {
-        it.layoutInDisplayCutoutMode =
-            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+    private fun makeParams(): WindowManager.LayoutParams {
+        // Use the real display size so the overlay covers the gesture navigation bar too.
+        val size = Point()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = wm.currentWindowMetrics.bounds
+            size.x = bounds.width()
+            size.y = bounds.height()
+        } else {
+            wm.defaultDisplay.getRealSize(size)
+        }
+
+        return WindowManager.LayoutParams(
+            size.x,
+            size.y,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+            WindowManager.LayoutParams.FLAG_FULLSCREEN or
+            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
+            PixelFormat.OPAQUE
+        ).also {
+            it.gravity = Gravity.TOP or Gravity.START
+            it.x = 0
+            it.y = 0
+            it.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
     }
 }
