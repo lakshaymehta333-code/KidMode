@@ -59,11 +59,12 @@ class FaceEnrollActivity : AppCompatActivity() {
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageCapturedCallback() {
                 override fun onCaptureSuccess(image: ImageProxy) {
-                    val bitmap = image.toBitmap()
+                    val bitmap   = image.toBitmap()
+                    val rotation = image.imageInfo.rotationDegrees
                     image.close()
                     lifecycleScope.launch {
                         val fm = FaceManager(this@FaceEnrollActivity)
-                        val ok = fm.enrollKid(bitmap)
+                        val ok = fm.enrollKid(bitmap, rotation)
                         if (ok) {
                             toast("Face saved!")
                             setResult(RESULT_OK)

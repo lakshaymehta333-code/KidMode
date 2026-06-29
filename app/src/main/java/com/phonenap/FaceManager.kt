@@ -16,18 +16,27 @@ enum class FaceResult { KID, NOT_KID, NO_FACE }
 
 class FaceManager(private val context: Context) {
 
-    private val detector = FaceDetection.getClient(
+    // Accurate detector for enrollment; fast detector for background scanning
+    private val accurateDetector = FaceDetection.getClient(
+        FaceDetectorOptions.Builder()
+            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+            .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
+            .setMinFaceSize(0.10f)
+            .build()
+    )
+
+    private val fastDetector = FaceDetection.getClient(
         FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
             .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
-            .setMinFaceSize(0.15f)
+            .setMinFaceSize(0.10f)
             .build()
     )
 
     private val prefs = PrefsManager(context)
 
-    suspend fun analyze(bitmap: Bitmap): FaceResult {
-        val faces = detector.process(InputImage.fromBitmap(bitmap, 0)).await()
+    suspend fun analyze(bitmap: Bitmap, rotation: Int = 0): FaceResult {
+        val faces = fastDetector.process(InputImage.fromBitmap(bitmap, rotation)).await()
         if (faces.isEmpty()) return FaceResult.NO_FACE
 
         val face = faces.maxByOrNull { it.boundingBox.width() } ?: return FaceResult.NO_FACE
@@ -41,8 +50,8 @@ class FaceManager(private val context: Context) {
         return if (cosine(vec, kidVec) >= THRESHOLD) FaceResult.KID else FaceResult.NOT_KID
     }
 
-    suspend fun enrollKid(bitmap: Bitmap): Boolean {
-        val faces = detector.process(InputImage.fromBitmap(bitmap, 0)).await()
+    suspend fun enrollKid(bitmap: Bitmap, rotation: Int = 0): Boolean {
+        val faces = accurateDetector.process(InputImage.fromBitmap(bitmap, rotation)).await()
         val face  = faces.maxByOrNull { it.boundingBox.width() } ?: return false
         val vec   = extractVector(face) ?: return false
         prefs.saveKidFaceVector(vec)

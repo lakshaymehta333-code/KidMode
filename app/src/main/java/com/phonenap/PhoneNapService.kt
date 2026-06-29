@@ -116,7 +116,7 @@ class PhoneNapService : Service(), LifecycleOwner {
                 Log.w(TAG, "captureFrame returned null")
                 return
             }
-            val result = faceManager.analyze(bitmap)
+            val result = faceManager.analyze(bitmap, lastCaptureRotation)
             Log.d(TAG, "Face result: $result")
             when (result) {
                 FaceResult.KID     -> {
@@ -138,6 +138,8 @@ class PhoneNapService : Service(), LifecycleOwner {
 
     // ── Camera capture (one-shot) ─────────────────────────────────────────────
 
+    private var lastCaptureRotation = 0
+
     private suspend fun captureFrame(): Bitmap? = suspendCancellableCoroutine { cont ->
         val future = ProcessCameraProvider.getInstance(this)
         future.addListener({
@@ -156,6 +158,7 @@ class PhoneNapService : Service(), LifecycleOwner {
                     object : ImageCapture.OnImageCapturedCallback() {
                         override fun onCaptureSuccess(image: ImageProxy) {
                             val bmp = image.toBitmap()
+                            lastCaptureRotation = image.imageInfo.rotationDegrees
                             image.close()
                             provider?.unbindAll()
                             cont.resume(bmp)
