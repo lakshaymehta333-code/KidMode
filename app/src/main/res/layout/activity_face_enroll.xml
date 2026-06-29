@@ -5,12 +5,23 @@
     android:orientation="vertical"
     android:background="#000000">
 
-    <!-- Camera preview — takes up top portion -->
+    <!-- Camera preview -->
     <androidx.camera.view.PreviewView
         android:id="@+id/viewFinder"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"/>
+
+    <!-- Progress bar — sits between preview and controls -->
+    <ProgressBar
+        android:id="@+id/progressEnroll"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:progressTint="#CCCCCC"
+        android:progressBackgroundTint="#1A1A1A"
+        android:max="7"
+        android:progress="0"/>
 
     <!-- Bottom controls -->
     <LinearLayout
@@ -18,14 +29,14 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="32dp"
+        android:padding="28dp"
         android:background="#000000">
 
         <TextView
             android:id="@+id/tvEnrollTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Face Scan"
+            android:text="Kid Face Scan"
             android:textColor="#BBBBBB"
             android:textSize="20sp"
             android:fontFamily="sans-serif-light"
@@ -33,10 +44,10 @@
 
         <TextView
             android:id="@+id/tvEnrollHint"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Look straight at the camera"
-            android:textColor="#444444"
+            android:text="Position the kid's face in the frame"
+            android:textColor="#555555"
             android:textSize="13sp"
             android:gravity="center"
             android:lineSpacingExtra="4dp"
@@ -46,7 +57,7 @@
             android:id="@+id/btnCapture"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:text="Scan Face"
+            android:text="Start Face Scan"
             android:textColor="#000000"
             android:backgroundTint="#CCCCCC"/>
 
