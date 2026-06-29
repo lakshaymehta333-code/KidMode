@@ -120,10 +120,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun launchFaceEnroll() {
-        faceEnrollLauncher.launch(
-            Intent(this, FaceEnrollActivity::class.java)
-                .putExtra(FaceEnrollActivity.EXTRA_IS_PARENT, false)
-        )
+        faceEnrollLauncher.launch(Intent(this, FaceEnrollActivity::class.java))
     }
 
     private fun finishSetup() {
