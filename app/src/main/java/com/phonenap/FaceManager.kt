@@ -12,7 +12,7 @@ import kotlinx.coroutines.tasks.await
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-enum class FaceResult { PARENT, KID, UNKNOWN, NO_FACE }
+enum class FaceResult { KID, NOT_KID, NO_FACE }
 
 class FaceManager(private val context: Context) {
 
@@ -26,57 +26,28 @@ class FaceManager(private val context: Context) {
 
     private val prefs = PrefsManager(context)
 
-    // ── Live analysis (called from service) ───────────────────────────────────
-
     suspend fun analyze(bitmap: Bitmap): FaceResult {
         val faces = detector.process(InputImage.fromBitmap(bitmap, 0)).await()
         if (faces.isEmpty()) return FaceResult.NO_FACE
 
-        // Use the largest face
-        val face = faces.maxByOrNull { it.boundingBox.width() }
-            ?: return FaceResult.NO_FACE
+        val face = faces.maxByOrNull { it.boundingBox.width() } ?: return FaceResult.NO_FACE
 
-        // Reject extreme angles (not facing camera properly)
         if (abs(face.headEulerAngleY) > 30f || abs(face.headEulerAngleX) > 25f)
             return FaceResult.NO_FACE
 
-        val vec = extractVector(face) ?: return FaceResult.NO_FACE
+        val vec    = extractVector(face) ?: return FaceResult.NO_FACE
+        val kidVec = prefs.getKidFaceVector() ?: return FaceResult.NO_FACE
 
-        val parentVec = prefs.getParentFaceVector()
-        val kidVec    = prefs.getKidFaceVector()
-
-        val parentSim = parentVec?.let { cosine(vec, it) } ?: -1f
-        val kidSim    = kidVec?.let    { cosine(vec, it) } ?: -1f
-
-        return when {
-            parentSim >= THRESHOLD && parentSim >= kidSim -> FaceResult.PARENT
-            kidSim    >= THRESHOLD                         -> FaceResult.KID
-            parentVec == null && kidVec == null            -> FaceResult.UNKNOWN
-            else                                           -> FaceResult.UNKNOWN
-        }
-    }
-
-    // ── Enrollment ────────────────────────────────────────────────────────────
-
-    suspend fun enrollParent(bitmap: Bitmap): Boolean {
-        val vec = detectAndExtract(bitmap) ?: return false
-        prefs.saveParentFaceVector(vec)
-        return true
+        return if (cosine(vec, kidVec) >= THRESHOLD) FaceResult.KID else FaceResult.NOT_KID
     }
 
     suspend fun enrollKid(bitmap: Bitmap): Boolean {
-        val vec = detectAndExtract(bitmap) ?: return false
+        val faces = detector.process(InputImage.fromBitmap(bitmap, 0)).await()
+        val face  = faces.maxByOrNull { it.boundingBox.width() } ?: return false
+        val vec   = extractVector(face) ?: return false
         prefs.saveKidFaceVector(vec)
         return true
     }
-
-    private suspend fun detectAndExtract(bitmap: Bitmap): FloatArray? {
-        val faces = detector.process(InputImage.fromBitmap(bitmap, 0)).await()
-        val face = faces.maxByOrNull { it.boundingBox.width() } ?: return null
-        return extractVector(face)
-    }
-
-    // ── Feature vector from face contour landmarks ────────────────────────────
 
     private fun extractVector(face: Face): FloatArray? {
         val box = face.boundingBox
@@ -87,39 +58,33 @@ class FaceManager(private val context: Context) {
         val pts = mutableListOf<PointF>()
         listOf(
             FaceContour.FACE,
-            FaceContour.LEFT_EYE,          FaceContour.RIGHT_EYE,
-            FaceContour.LEFT_EYEBROW_TOP,  FaceContour.RIGHT_EYEBROW_TOP,
+            FaceContour.LEFT_EYE,            FaceContour.RIGHT_EYE,
+            FaceContour.LEFT_EYEBROW_TOP,    FaceContour.RIGHT_EYEBROW_TOP,
             FaceContour.LEFT_EYEBROW_BOTTOM, FaceContour.RIGHT_EYEBROW_BOTTOM,
-            FaceContour.NOSE_BRIDGE,       FaceContour.NOSE_BOTTOM,
-            FaceContour.UPPER_LIP_TOP,     FaceContour.UPPER_LIP_BOTTOM,
-            FaceContour.LOWER_LIP_TOP,     FaceContour.LOWER_LIP_BOTTOM
+            FaceContour.NOSE_BRIDGE,         FaceContour.NOSE_BOTTOM,
+            FaceContour.UPPER_LIP_TOP,       FaceContour.UPPER_LIP_BOTTOM,
+            FaceContour.LOWER_LIP_TOP,       FaceContour.LOWER_LIP_BOTTOM
         ).forEach { type -> face.getContour(type)?.points?.let { pts.addAll(it) } }
 
         if (pts.size < 20) return null
 
-        // Normalise to face-centre / face-width, then L2-normalise
         val raw = FloatArray(pts.size * 2) { i ->
-            if (i % 2 == 0) (pts[i / 2].x - cx) / w
-            else             (pts[i / 2].y - cy) / w
+            if (i % 2 == 0) (pts[i / 2].x - cx) / w else (pts[i / 2].y - cy) / w
         }
         return l2Normalise(raw)
     }
-
-    // ── Math helpers ──────────────────────────────────────────────────────────
 
     private fun l2Normalise(v: FloatArray): FloatArray {
         val mag = sqrt(v.sumOf { (it * it).toDouble() }).toFloat()
         return if (mag > 0f) FloatArray(v.size) { v[it] / mag } else v
     }
 
-    /** Cosine similarity (dot product of L2-normalised vectors → range -1..1). */
     private fun cosine(a: FloatArray, b: FloatArray): Float {
         val n = minOf(a.size, b.size)
         return (0 until n).sumOf { (a[it] * b[it]).toDouble() }.toFloat()
     }
 
     companion object {
-        // Tune: 0.80 = strict, 0.75 = lenient. Increase if false positives occur.
         private const val THRESHOLD = 0.78f
     }
 }

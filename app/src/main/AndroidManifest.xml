@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
 
     <application
         android:allowBackup="false"
@@ -31,6 +32,14 @@
         <activity
             android:name=".SetupActivity"
             android:exported="false"/>
+
+        <activity
+            android:name=".BiometricUnlockActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.PhoneNap.Transparent"/>
 
         <activity
             android:name=".FaceEnrollActivity"

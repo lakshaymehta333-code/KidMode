@@ -38,9 +38,12 @@ class OverlayManager(private val context: Context) {
                 overlay = view
                 handler.post(clockTick)
 
-                // Wire up "Scan parent face" button
+                // Wire up parent fingerprint unlock button
                 view.findViewById<View>(R.id.btnUnlock)?.setOnClickListener {
-                    PhoneNapService.instance?.triggerActiveScan()
+                    context.startActivity(
+                        android.content.Intent(context, BiometricUnlockActivity::class.java)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

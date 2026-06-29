@@ -41,9 +41,9 @@ class PhoneNapService : Service(), LifecycleOwner {
     override val lifecycle: Lifecycle get() = lifecycleRegistry
 
     // ── State ─────────────────────────────────────────────────────────────────
-    private lateinit var prefs: PrefsManager
+    lateinit var prefs: PrefsManager
+    lateinit var overlayManager: OverlayManager
     private lateinit var faceManager: FaceManager
-    private lateinit var overlayManager: OverlayManager
     private lateinit var sensorMgr: SensorManager
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -119,16 +119,12 @@ class PhoneNapService : Service(), LifecycleOwner {
             val result = faceManager.analyze(bitmap)
             Log.d(TAG, "Face result: $result")
             when (result) {
-                FaceResult.PARENT  -> {
-                    prefs.setActive(false)
-                    overlayManager.hide()
-                }
-                FaceResult.KID,
-                FaceResult.UNKNOWN -> {
+                FaceResult.KID     -> {
                     prefs.setActive(true)
                     overlayManager.show()
                 }
-                FaceResult.NO_FACE -> { /* no action */ }
+                FaceResult.NOT_KID,
+                FaceResult.NO_FACE -> { /* no action — overlay stays if already shown */ }
             }
         } finally {
             isAnalysing = false

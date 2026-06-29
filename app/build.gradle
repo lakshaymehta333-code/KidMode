@@ -47,6 +47,9 @@ dependencies {
     // Encrypted local storage for face data
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 
+    // Biometric (parent fingerprint unlock)
+    implementation 'androidx.biometric:biometric:1.1.0'
+
     // Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3'
